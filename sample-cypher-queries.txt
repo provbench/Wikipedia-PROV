@@ -1,0 +1,45 @@
+%% traverse the wasRevisionOf chain  starting from the home node, counting the number of revisions
+
+START n=node(1)
+match revisionChain=n-[r?:wasRevisionOf*1..100]->n2
+return n2.title, n2.time?, n2.revid, length(revisionChain), r
+order by n2.revid
+
+%% find all users who ever contributed to revisions of this page
+
+START current=node(1)
+match  current-[wasRevisionOf*0..100]->previous -[:wasGeneratedBy]->edit-[:wasAssociatedWith]->agent
+return distinct agent.user_name
+
+%% count the number of agents (without indexes)
+START node=node(*)
+WHERE node.type! ="agent"
+return count(node)
+
+%% count the number of revisions for each agent, across all page titles
+
+START agentNode=node(*)
+MATCH edit -[:wasAssociatedWith]->agentNode
+return agentNode.user_name, count(edit)
+
+%% count the number of revisions for each agent and for each page title 
+
+START agentNode=node(*)
+MATCH article -[:wasGeneratedBy] -> edit -[:wasAssociatedWith]->agentNode
+return article.title, agentNode.user_name, count(edit)
+order by agentNode.user_name
+
+%% all articles edited by each  agent
+
+START agentNode=node(*)
+MATCH article -[:wasGeneratedBy] -> edit -[:wasAssociatedWith]->agentNode
+return distinct  article.title, agentNode.user_name
+order by agentNode.user_name
+
+%% all comments and timeline on the page revisions
+
+START article=node(*)
+MATCH article-[:wasGeneratedBy]->edit
+return edit.comment, edit.endtime
+
+
